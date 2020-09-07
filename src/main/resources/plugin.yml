@@ -2,8 +2,7 @@ name: WLME
 main: boon4681.WLME.core
 version: 1.0.0
 author: boon4681
-api-version: 1.15
+api-version: 1.16
 commands:
   wlmerun:
-
   wlmestop:
