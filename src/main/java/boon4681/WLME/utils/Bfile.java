@@ -34,12 +34,10 @@ public class Bfile {
     }
     public void set(String k,Object v){
         this.data.set(k,v);
-        Bstring.print(this.data);
         save();
     }
     public void remove(String k){
         this.data.set(k,null);
-        Bstring.print(this.data);
         save();
     }
     private boolean contain(String k){
@@ -48,7 +46,6 @@ public class Bfile {
     private void save(){
         try {
             this.data.save(this.main.getPath());
-            Bstring.print("Save");
         } catch (IOException e) {
             Bstring.error(e);
         }
@@ -57,14 +54,12 @@ public class Bfile {
         if(!checkExist()){
             try {
                 this.main.createNewFile();
-                Bstring.print("genFile");
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
     }
     private boolean checkExist(){
-        Bstring.print(this.main);
         if(this.main.exists()) return true;
         else return false;
     }

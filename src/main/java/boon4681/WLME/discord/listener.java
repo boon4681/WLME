@@ -5,23 +5,17 @@ import boon4681.WLME.utils.Bnetwork;
 import boon4681.WLME.utils.Bstring;
 import com.google.gson.JsonObject;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.entities.ChannelType;
-import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.TextChannel;
-import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.ReadyEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 public class listener extends ListenerAdapter {
-    private void checkCanUse(MessageReceivedEvent event,TextChannel channel){
+    private boolean checkCanUse(MessageReceivedEvent event,TextChannel channel){
         Boolean canUse = false;
         if(core.config.getData().get("allow_user_role").equals(null)){
             canUse = true;
@@ -31,31 +25,54 @@ public class listener extends ListenerAdapter {
         }
         if(!canUse){
             for (Role role : event.getGuild().getMember(event.getAuthor()).getRoles()){
-                if(core.config.getData().getList("allow_user_role").contains(role.getName())){
-                    canUse = true;
-                    break;
-                }
-            }
-        }
-        if(canUse==false) {
-            channel.sendMessage(":fire: sorry you cannot use this command").queue();
-            return;
-        }
-    }
-    @Override
-    public void onReady(@NotNull ReadyEvent event) {
-        event.getJDA().getGuilds().forEach(e->{
-            for (String s : core.whitelist.getData().getKeys(false)){
-                for (Role role : e.getMember(User.fromId(s)).getRoles()){
-                    if(core.config.getData().getList("allow_user_role").contains(role.getName())){
-                        core.whitelist.remove(s);
+                for (Object o : core.config.getData().getList("allow_user_role")){
+                    if(o.toString().equals(role.getId().toLowerCase())){
+                        canUse = true;
                         break;
                     }
                 }
             }
-        });
+        }
+        if(core.config.getData().get("allow_channels").equals("")){
+            canUse = true;
+        }
+        if(!core.config.getData().get("allow_channels").equals(channel.getId())){
+            canUse = false;
+        }
+        if(canUse==false) {
+            channel.sendMessage(":fire: sorry you cannot use this command").queue();
+        }
+        return canUse;
     }
-
+    @Override
+    public void onReady(@NotNull ReadyEvent event) {
+        core.task = ()->{
+            core.config.load();
+            core.whitelist.load();
+            event.getJDA().getGuilds().forEach(e->{
+                if(core.config.getData().getString("allow_guilds").equals(null)){ }
+                else if(core.config.getData().getString("allow_guilds").equals("")) { }
+                else if(core.config.getData().getString("allow_guilds").equals(e.getId().toString())){
+                    for (Member m : e.getMembers()){
+                        for (String s : core.whitelist.getData().getKeys(false)){
+                            if(m.getId().equals(s)){
+                                Boolean Found_role=false;
+                                for (Role r: m.getRoles()){
+                                    for (Object o : core.config.getData().getList("allow_user_role")){
+                                        if(o.toString().equals(r.getId())){
+                                            Found_role=true;
+                                        }
+                                    }
+                                }
+                                if(!Found_role) core.whitelist.remove(s);
+                            }
+                        }
+                    }
+                }
+            });
+        };
+        core.scheduledFuture = core.executor.scheduleWithFixedDelay(core.task, 0, 5, TimeUnit.SECONDS);
+    }
     @Override
     public void onMessageReceived(@NotNull MessageReceivedEvent event) {
         if(event.isFromType(ChannelType.TEXT)){
@@ -65,7 +82,11 @@ public class listener extends ListenerAdapter {
             String content = event.getMessage().getContentDisplay();
             String command_prefix = core.config.getData().get("command_prefix").toString();
             TextChannel channel = event.getTextChannel();
-            if(content.equals(command_prefix+"me")){
+            String[] command_list = {
+                    Bstring.merger(command_prefix,"me"),
+                    Bstring.merger(command_prefix,"verify")
+            };
+            if(content.equals(command_prefix+"me") && checkCanUse(event,channel)){
                 core.config.load();
                 core.whitelist.load();
                 if(core.whitelist.getData().get(event.getAuthor().getId())==null){
@@ -84,7 +105,7 @@ public class listener extends ListenerAdapter {
                     channel.sendMessage(profile.build()).queue();
                 }
             }
-            if(content.startsWith(command_prefix+"verify")){
+            if(content.startsWith(command_prefix+"verify") && checkCanUse(event,channel)){
                 String name = content.replace(command_prefix+"verify","");
                 JsonObject element = Bnetwork.loadJSON(Bstring.merger("https://api.mojang.com/users/profiles/minecraft/",name.replace(" ","")));
                 if(!(element==null)){

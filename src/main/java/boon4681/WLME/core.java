@@ -13,12 +13,17 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 public class core extends JavaPlugin {
     public static ConsoleCommandSender logger;
     public static JavaPlugin This;
     public static Bfile whitelist;
     public static Bfile config;
+    public static Runnable task;
+    public static ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+    public static ScheduledFuture<?> scheduledFuture;
     public static void runBot(){
         int initSuccess = client.run();
         if(initSuccess == 0) {
